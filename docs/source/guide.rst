@@ -1,60 +1,69 @@
 Guide
 =====
 
-The PyFilesytem interface simplifies most aspects of working with files and directories. This guide covers what you need to know about working with FS objects.
+PyFilesytem provides an interface that simplifies most aspects of working with files and directories by providing a series of filesystem objects ("FS objects"). This guide covers what you need to know about working with FS objects.
 
 Why use PyFilesystem?
 ~~~~~~~~~~~~~~~~~~~~~
 
-If you are comfortable using the Python standard library, you may be wondering; *why learn another API for working with files?*
+If you are comfortable using the Python standard library, you may wonder, *why learn another API for working with files?*
 
-The :ref:`interface` is generally simpler than the ``os`` and ``io`` modules -- there are fewer edge cases and less ways to shoot yourself in the foot. This may be reason alone to use it, but there are other compelling reasons you should use ``import fs`` for even straightforward filesystem code.
+PyFilesystem provides a :ref:`interface` that is generally simpler to understand and use than Python's standard ``os`` and ``io`` modules.  PyFilesystem's :ref:`interface` contains fewer edge cases, and fewer ways to shoot yourself in the foot, relative to Python's standard ``os`` and ``io`` modules.  PyFilesystem provides a simplicity and consistency that alone may justify its use, but other compelling reasons exist for using PyFilesystem even for straightforward filesystem functionalities.
 
-The abstraction offered by FS objects means that you can write code that is agnostic to where your files are physically located. For instance, if you wrote a function that searches a directory for duplicates files, it will work unaltered with a directory on your hard-drive, or in a zip file, on an FTP server, on Amazon S3, etc.
+FS objects provide an abstraction that conveniently allows code expressions that are agnostic to the physical location of files. For example, if a function was written for searching a directory for duplicates files, this function would work unaltered operating on a directory within your hard-drive, a directory within a zip file, a directory on a FTP server, a directory on Amazon S3, etc.  If a FS object is available for your chosen filesystem (or any data store that resembles a filesystem), PyFilesystem's consistent API allows you to easily access files on your chosen filesystem. 
 
-As long as an FS object exists for your chosen filesystem (or any data store that resembles a filesystem), you can use the same API. This means that you can defer the decision regarding where you store data to later. If you decide to store configuration in the *cloud*, it could be a single line change and not a major refactor.
+FS objects allow deferring a decision how to store your files (e.g., disk filesystem, FTP server, etc.) and allow easily moving your files in the future. Only a single-line change should be needed for PyFilesystem to support changing how your files are stored.
 
+PyFilesystem is also platform agnostic, so your code will work without modification on Linux, MacOS, and Windows operating systems.  In this way, PyFilesystem extends platform-agnosticism features within Python's standard modules.
 
-PyFilesystem can also be beneficial for unit-testing; by swapping the OS filesystem with an in-memory filesystem, you can write tests without having to manage (or mock) file IO. And you can be sure that your code will work on Linux, MacOS, and Windows.
+PyFilesystem's FS objects also provides unit-testing benefits.  For example, unit tests can modify code for accessing files within a traditional disk filesystem with code for accessing files within an in-memory filesystem.  This capability allows for writing unit tests without having to manage (or mock) file I/O. 
 
 Opening Filesystems
 ~~~~~~~~~~~~~~~~~~~
 
-There are two ways you can open a filesystem. The first and most natural way is to import the appropriate filesystem class and construct it.
+PyFilesystem provides two ways for opening a filesystem.  A discussion of each way for opening a filesystem, with examples, follows.
 
-Here's how you would open a :class:`~fs.osfs.OSFS` (Operating System File System), which maps to the files and directories of your hard-drive::
+    Importing a Filesystem Class
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The first and most natural way to open a filesystem is to import and instantiate an appropriate filesystem class.
+
+An example of importing and instantiating a :class:`~fs.osfs.OSFS` (Operating System File System) class is shown below.  The OSFS filesystem provides access to files and directories on a physical hard drive::
 
     >>> from fs.osfs import OSFS
     >>> home_fs = OSFS("~/")
 
-This constructs an FS object which manages the files and directories under a given system path. In this case, ``'~/'``, which is a shortcut for your home directory.
+The logic shown above constructs a OSFS object to manage files and directories under a provided system path. In this example, the provided system path is ``'~/'``, which reflects a shortcut for your home directory within PyFilesystem.
 
-Here's how you would list the files/directories in your home directory::
+The example shown below extends the example shown above to list files and directories at the top level within the provided system path::
 
     >>> home_fs.listdir('/')
     ['world domination.doc', 'paella-recipe.txt', 'jokes.txt', 'projects']
 
-Notice that the parameter to ``listdir`` is a single forward slash, indicating that we want to list the *root* of the filesystem. This is because from the point of view of ``home_fs``, the root is the directory we used to construct the ``OSFS``.
+Notice that the argument to ``listdir`` is a single forward slash, indicating that we want to list the *root* of the filesystem.  Recall also that the provided system path specified the filesystem as ``'~/'``.
 
-Also note that it is a forward slash, even on Windows. This is because FS paths are in a consistent format regardless of the platform. Details such as the separator and encoding are abstracted away. See :ref:`paths` for details.
+PyFilesystem's platform agnosticism provides for a forward slash as a path delimiter (even on Windows). See :ref:`paths` for details.
 
-Other filesystems interfaces may have other requirements for their constructor. For instance, here is how you would open a FTP filesystem::
+Some filesystem interfaces may require additional or different constructor arguments. For example, instantiating a FTP filesystem requires a URL at which the root filesystem is stored::
 
     >>> from ftpfs import FTPFS
     >>> debian_fs = FTPFS('ftp.mirror.nl')
     >>> debian_fs.listdir('/')
     ['debian-archive', 'debian-backports', 'debian', 'pub', 'robots.txt']
 
-The second, and more general way of opening filesystems objects, is via an *opener* which opens a filesystem from a URL-like syntax. Here's an alternative way of opening your home directory::
+    URL-like Opener Expressions
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+A second, and more general way of opening filesystems objects, is through an *opener* expression which identifies a filesystem through a URL-like syntax. An example of opening a user's home directory, through an opener expression, is shown below::
 
     >>> from fs import open_fs
     >>> home_fs = open_fs('osfs://~/')
     >>> home_fs.listdir('/')
     ['world domination.doc', 'paella-recipe.txt', 'jokes.txt', 'projects']
 
-The opener system is particularly useful when you want to store the physical location of your application's files in a configuration file.
+As seen above, the opener expression specifies a filesystem class through a scheme specifier.  One benefit of using a scheme specifier when opening filesystems is that the scheme specifier could be expressed through a traditional Python format expression, allowing the filesystem argument to be determined at runtime, possibly through configuration data read from a file.
 
-If you don't specify the protocol in the FS URL, then PyFilesystem will assume you want a OSFS relative from the current working directory. So the following would be an equivalent way of opening your home directory::
+If no scheme is specified within the argument to open_fs, PyFilesystem creates an OSFS instance at the current working directory. So the following example reflects an equivalent way of opening your home directory::
 
     >>> from fs import open_fs
     >>> home_fs = open_fs('.')
@@ -63,6 +72,8 @@ If you don't specify the protocol in the FS URL, then PyFilesystem will assume y
 
 Tree Printing
 ~~~~~~~~~~~~~
+
+Developers often want a function for creating a simple illustration of the contents of a filesystem.  PyFilesystem provides an easy mechanism for displaying filesystem contents.
 
 Calling :meth:`~fs.base.FS.tree` on a FS object will print an ascii tree view of your filesystem. Here's an example::
 
@@ -82,28 +93,28 @@ Calling :meth:`~fs.base.FS.tree` on a FS object will print an ascii tree view of
 This can be a useful debugging aid!
 
 
-Closing
-~~~~~~~
+Closing Filesystem Objects
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-FS objects have a :meth:`~fs.base.FS.close` methd which will perform any required clean-up actions. For many filesystems (notably :class:`~fs.osfs.OSFS`), the ``close`` method does very little. Other filesystems may only finalize files or release resources once ``close()`` is called.
+FS objects have a :meth:`~fs.base.FS.close` method which performs any required clean-up actions. For many filesystems (notably :class:`~fs.osfs.OSFS`), the ``close`` method does very little. Other filesystems may only finalize files or release resources once ``close()`` is called.
 
-You can call ``close`` explicitly once you are finished using a filesystem. For example::
+Code can call ``close`` explicitly once the code is finished using a filesystem. For example::
 
     >>> home_fs = open_fs('osfs://~/')
     >>> home_fs.writetext('reminder.txt', 'buy coffee')
     >>> home_fs.close()
 
-If you use FS objects as a context manager, ``close`` will be called automatically. The following is equivalent to the previous example::
+If you use FS objects as a context manager, ``close`` will be called automatically. The following example is equivalent to the previous example::
 
     >>> with open_fs('osfs://~/') as home_fs:
     ...    home_fs.writetext('reminder.txt', 'buy coffee')
 
-Using FS objects as a context manager is recommended as it will ensure every FS is closed.
+Using FS objects as a context manager is recommended as it will ensure every FS instance is properly closed.
 
-Directory Information
-~~~~~~~~~~~~~~~~~~~~~
+Directory Contents
+~~~~~~~~~~~~~~~~~~
 
-Filesystem objects have a :meth:`~fs.base.FS.listdir` method which is similar to ``os.listdir``; it takes a path to a directory and returns a list of file names. Here's an example::
+Filesystem objects have a :meth:`~fs.base.FS.listdir` method which is similar to ``os.listdir``; this method receives as an argument a path to a directory and returns a list of file names. Here's an example::
 
     >>> home_fs.listdir('/projects')
     ['fs', 'moya', 'README.md']
